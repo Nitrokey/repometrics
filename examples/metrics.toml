@@ -1,0 +1,3 @@
+[file-size-cargo-toml]
+type = "file-size"
+input = "Cargo.toml"

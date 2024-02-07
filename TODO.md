@@ -1,0 +1,23 @@
+- metrics metadata
+  - units
+  - target (is a higher value good or bad?)
+  - significance threshold (values with delta < than x are considered unchanged)
+  - warning threshold (values with delta > than x trigger a special warning)
+- metrics
+  - stack usage
+  - compilation time
+  - code coverage
+- storage
+  - add name to values
+  - fetch data for commit
+  - filesystem storage
+  - gitlab artifacts
+- commands
+  - get metrics for revision
+  - compare metrics for base branch and head
+- output
+  - format as table
+  - different output formats: markdown, ...
+  - order by relative change
+- general
+  - config file for arguments
