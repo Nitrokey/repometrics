@@ -12,6 +12,8 @@ const STYLE_CHANGE_BETTER: Style = Color::Ansi(AnsiColor::Green).on_default();
 const STYLE_CHANGE_WORSE: Style = Color::Ansi(AnsiColor::Red).on_default();
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let args = args::Args::parse();
 
     let metrics = data::Metrics::load(&args.metrics)?;
