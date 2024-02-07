@@ -1,10 +1,12 @@
 mod args;
+mod cache;
 mod data;
 
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
 use anyhow::Result;
 use clap::Parser;
+use log::error;
 
 const STYLE_METRIC: Style = Style::new().bold();
 const STYLE_CHANGE_NONE: Style = Style::new().dimmed();
@@ -16,9 +18,13 @@ fn main() -> Result<()> {
 
     let args = args::Args::parse();
 
-    let metrics = data::Metrics::load(&args.metrics)?;
     match args.command {
-        args::Command::Compare { baseline, test } => {
+        args::Command::Compare {
+            metrics,
+            baseline,
+            test,
+        } => {
+            let metrics = data::Metrics::load(&metrics)?;
             let baseline_values = data::Values::load(&baseline)?;
             let test_values = data::Values::load(&test)?;
             let comparisons = metrics.compare(&baseline_values, &test_values);
@@ -63,9 +69,24 @@ fn main() -> Result<()> {
                 println!();
             }
         }
-        args::Command::Generate { root } => {
+        args::Command::Generate {
+            metrics,
+            cache,
+            root,
+        } => {
+            let metrics = data::Metrics::load(metrics)?;
             let values = metrics.generate(&root);
-            print!("{}", values.format()?);
+            let formatted = values.format()?;
+            if cache {
+                if let Err(err) = cache::store(&root, &formatted) {
+                    error!("Failed to cache generated metrics: {}", err);
+                }
+            }
+            print!("{}", formatted);
+        }
+        args::Command::Load { root, rev } => {
+            let s = cache::load(&root, rev.rev.as_deref(), rev.base.as_deref())?;
+            print!("{}", s)
         }
     }
 
