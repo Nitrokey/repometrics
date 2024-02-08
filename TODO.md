@@ -10,8 +10,6 @@
 - storage
   - add name to values
   - pick latest Gitlab job if there are multiple
-- commands
-  - load + compare combination?
 - output
   - format as table
   - different output formats: markdown, ...

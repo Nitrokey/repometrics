@@ -33,6 +33,18 @@ pub enum Command {
         #[command(flatten)]
         gitlab: Gitlab,
     },
+    Run {
+        #[arg(long)]
+        metrics: String,
+        #[arg(long)]
+        root: Option<PathBuf>,
+        #[command(flatten)]
+        rev: Rev,
+        #[command(flatten)]
+        gitlab: Gitlab,
+        #[arg(long)]
+        cache: bool,
+    },
 }
 
 #[derive(Debug, clap::Args)]

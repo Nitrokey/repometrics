@@ -35,12 +35,16 @@ pub fn store_for_rev(path: &Path, rev: &str, data: &str) -> Result<()> {
         .with_context(|| format!("failed to write cache file '{}'", cache_file.display()))
 }
 
-pub fn load(path: &Path, rev: &str) -> Result<String> {
+pub fn load(path: &Path, rev: &str) -> Result<Option<String>> {
     let cache_file = path.join(format!(".repometrics/{}.toml", rev));
-    anyhow::ensure!(cache_file.exists(), "no cache entry for commit {rev}");
-    info!("Reading cache file '{}'", cache_file.display());
-    fs::read_to_string(&cache_file)
-        .with_context(|| format!("failed to read cache file '{}'", cache_file.display()))
+    if cache_file.exists() {
+        info!("Reading cache file '{}'", cache_file.display());
+        fs::read_to_string(&cache_file)
+            .map(Some)
+            .with_context(|| format!("failed to read cache file '{}'", cache_file.display()))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn get_rev(path: &Path, rev: Option<&str>, base: Option<&str>) -> Result<String> {
