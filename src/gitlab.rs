@@ -27,16 +27,9 @@ pub struct Api<'a> {
 
 impl<'a> Api<'a> {
     pub fn new(host: &'a str, project: &'a str, job: &'a str, artifact: &'a str) -> Result<Self> {
-        let gitlab = if let Ok(job_token) = env::var("CI_JOB_TOKEN") {
-            Gitlab::new_job_token(host, job_token)
-        } else if let Ok(personal_token) = env::var("GITLAB_API_TOKEN") {
-            Gitlab::new(host, personal_token)
-        } else {
-            anyhow::bail!(
-                "missing Gitlab API access token -- set CI_JOB_TOKEN or GITLAB_API_TOKEN"
-            );
-        }
-        .context("failed to create Gitlab API instance")?;
+        let token = env::var("GITLAB_API_TOKEN")
+            .context("missing Gitlab API access token -- set GITLAB_API_TOKEN")?;
+        let gitlab = Gitlab::new(host, token).context("failed to create Gitlab API instance")?;
         Ok(Self {
             gitlab,
             host,
