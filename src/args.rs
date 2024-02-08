@@ -7,6 +7,8 @@ use crate::gitlab::Api;
 
 #[derive(Debug, Parser)]
 pub struct Args {
+    #[arg(long, global = true)]
+    pub metrics: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -14,14 +16,10 @@ pub struct Args {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Compare {
-        #[arg(long)]
-        metrics: String,
         baseline: PathBuf,
         test: PathBuf,
     },
     Generate {
-        #[arg(long)]
-        metrics: String,
         #[arg(long)]
         cache: bool,
         root: PathBuf,
@@ -34,8 +32,6 @@ pub enum Command {
         gitlab: Gitlab,
     },
     Run {
-        #[arg(long)]
-        metrics: String,
         #[arg(long)]
         root: Option<PathBuf>,
         #[command(flatten)]

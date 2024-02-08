@@ -3,7 +3,7 @@ mod cache;
 mod data;
 mod gitlab;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
@@ -22,22 +22,14 @@ fn main() -> Result<()> {
     let args = args::Args::parse();
 
     match args.command {
-        args::Command::Compare {
-            metrics,
-            baseline,
-            test,
-        } => {
-            let metrics = data::Metrics::load(metrics)?;
+        args::Command::Compare { baseline, test } => {
+            let metrics = load_metrics(args.metrics, None)?;
             let baseline_values = data::Values::load(baseline)?;
             let test_values = data::Values::load(test)?;
             compare(&metrics, &baseline_values, &test_values);
         }
-        args::Command::Generate {
-            metrics,
-            cache,
-            root,
-        } => {
-            let metrics = data::Metrics::load(metrics)?;
+        args::Command::Generate { cache, root } => {
+            let metrics = load_metrics(args.metrics, Some(&root))?;
             let (_, formatted) = generate(&metrics, &root, cache)?;
             print!("{}", formatted);
         }
@@ -47,14 +39,13 @@ fn main() -> Result<()> {
             print!("{}", s)
         }
         args::Command::Run {
-            metrics,
             root,
             rev,
             gitlab,
             cache,
         } => {
-            let metrics = data::Metrics::load(metrics)?;
             let root = root.as_deref().unwrap_or_else(|| ".".as_ref());
+            let metrics = load_metrics(args.metrics, Some(root))?;
             let baseline_rev = cache::get_rev(root, rev.rev.as_deref(), rev.base.as_deref())?;
             info!("Resolved baseline to commit {baseline_rev}");
             let baseline_values = load(&gitlab, root, &baseline_rev)?;
@@ -66,6 +57,30 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn load_metrics(metrics: Option<PathBuf>, root: Option<&Path>) -> Result<data::Metrics> {
+    let path = metrics
+        .or_else(|| {
+            root.and_then(|root| {
+                let metrics = root.join("repometrics.toml");
+                if metrics.exists() {
+                    Some(metrics)
+                } else {
+                    None
+                }
+            })
+        })
+        .or_else(|| {
+            let metrics = Path::new(".").join("repometrics.toml");
+            if metrics.exists() {
+                Some(metrics)
+            } else {
+                None
+            }
+        })
+        .context("no metrics file found -- set the --metrics option")?;
+    data::Metrics::load(path)
 }
 
 fn compare(metrics: &data::Metrics, baseline: &data::Values, test: &data::Values) {
