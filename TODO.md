@@ -9,12 +9,9 @@
   - code coverage
 - storage
   - add name to values
-  - fetch data for commit
-  - filesystem storage
-  - gitlab artifacts
+  - pick latest Gitlab job if there are multiple
 - commands
-  - get metrics for revision
-  - compare metrics for base branch and head
+  - load + compare combination?
 - output
   - format as table
   - different output formats: markdown, ...

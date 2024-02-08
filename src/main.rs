@@ -1,10 +1,11 @@
 mod args;
 mod cache;
 mod data;
+mod gitlab;
 
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use clap::Parser;
 use log::error;
 
@@ -84,8 +85,20 @@ fn main() -> Result<()> {
             }
             print!("{}", formatted);
         }
-        args::Command::Load { root, rev } => {
-            let s = cache::load(&root, rev.rev.as_deref(), rev.base.as_deref())?;
+        args::Command::Load { root, rev, gitlab } => {
+            let rev = cache::get_rev(&root, rev.rev.as_deref(), rev.base.as_deref())?;
+            let s = if gitlab.any() {
+                let s = gitlab
+                    .api()?
+                    .get_artifact(&rev)
+                    .context("failed to retrieve metrics from Gitlab")?;
+                if let Err(err) = cache::store_for_rev(&root, &rev, &s) {
+                    error!("Failed to cache downloaded metrics: {}", err);
+                }
+                s
+            } else {
+                cache::load(&root, &rev)?
+            };
             print!("{}", s)
         }
     }

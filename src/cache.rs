@@ -13,6 +13,10 @@ pub fn store(path: &Path, data: &str) -> Result<()> {
         return Ok(());
     }
     let commit = get_commit(path)?;
+    store_for_rev(path, &commit, data)
+}
+
+pub fn store_for_rev(path: &Path, rev: &str, data: &str) -> Result<()> {
     let cache_dir = path.join(".repometrics");
     if !cache_dir.exists() {
         fs::create_dir(&cache_dir).with_context(|| {
@@ -25,35 +29,38 @@ pub fn store(path: &Path, data: &str) -> Result<()> {
             format!("failed to create gitignore file '{}'", gitignore.display())
         })?;
     }
-    let cache_file = cache_dir.join(format!("{}.toml", commit));
+    let cache_file = cache_dir.join(format!("{}.toml", rev));
     info!("Writing data to cache file '{}'", cache_file.display());
     fs::write(&cache_file, data)
         .with_context(|| format!("failed to write cache file '{}'", cache_file.display()))
 }
 
-pub fn load(path: &Path, rev: Option<&str>, base: Option<&str>) -> Result<String> {
+pub fn load(path: &Path, rev: &str) -> Result<String> {
+    let cache_file = path.join(format!(".repometrics/{}.toml", rev));
+    anyhow::ensure!(cache_file.exists(), "no cache entry for commit {rev}");
+    info!("Reading cache file '{}'", cache_file.display());
+    fs::read_to_string(&cache_file)
+        .with_context(|| format!("failed to read cache file '{}'", cache_file.display()))
+}
+
+pub fn get_rev(path: &Path, rev: Option<&str>, base: Option<&str>) -> Result<String> {
     anyhow::ensure!(
         is_git_repo(path),
         "Directory '{}' is not a Git repository",
         path.display(),
     );
-    let rev = match (rev, base) {
-        (Some(rev), _) => resolve_commit(path, rev)?,
-        (_, Some(base)) => merge_base(path, base)?,
+    match (rev, base) {
+        (Some(rev), _) => resolve_commit(path, rev),
+        (_, Some(base)) => merge_base(path, base),
         (None, None) => {
             anyhow::ensure!(
                 is_clean(path),
                 "Git repository '{}' is not in a clean state",
                 path.display(),
             );
-            get_commit(path)?
+            get_commit(path)
         }
-    };
-    let cache_file = path.join(format!(".repometrics/{}.toml", rev));
-    anyhow::ensure!(cache_file.exists(), "no cache entry for commit {rev}");
-    info!("Reading cache file '{}'", cache_file.display());
-    fs::read_to_string(&cache_file)
-        .with_context(|| format!("failed to read cache file '{}'", cache_file.display()))
+    }
 }
 
 fn is_git_repo(path: &Path) -> bool {
