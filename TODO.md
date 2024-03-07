@@ -15,4 +15,4 @@
   - different output formats: markdown, ...
   - order by relative change
 - general
-  - config file for arguments
+  - multiple config files?  separate config file for Gitlab token?

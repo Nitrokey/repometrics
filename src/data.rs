@@ -1,22 +1,12 @@
 use std::{collections::BTreeMap, fs, path::Path};
 
 use anyhow::{Context as _, Result};
-use log::debug;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct Metrics(BTreeMap<String, Metric>);
 
 impl Metrics {
-    pub fn load(path: impl AsRef<Path>) -> Result<Metrics> {
-        let path = path.as_ref();
-        debug!("Loading metrics file {}", path.display());
-        let s = fs::read_to_string(path)
-            .with_context(|| format!("failed to read metrics file '{}'", path.display()))?;
-        toml::from_str(&s)
-            .with_context(|| format!("failed to parse metrics file '{}'", path.display()))
-    }
-
     pub fn generate(&self, root: &Path) -> Values {
         let mut values = Values::default();
         for (id, metric) in &self.0 {

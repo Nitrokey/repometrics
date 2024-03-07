@@ -1,3 +1,3 @@
-[file-size-cargo-toml]
+[metrics.file-size-cargo-toml]
 type = "file-size"
 input = "Cargo.toml"

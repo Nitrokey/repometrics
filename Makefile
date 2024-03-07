@@ -13,8 +13,8 @@ lint:
 .PHONY: example
 example:
 	mkdir -p examples/data
-	cargo run --quiet -- --metrics examples/metrics.toml generate examples/a > examples/data/a.toml
-	cargo run --quiet -- --metrics examples/metrics.toml generate examples/b > examples/data/b.toml
-	cargo run --quiet -- --metrics examples/metrics.toml compare examples/data/a.toml examples/data/b.toml
-	cargo run --quiet -- --metrics examples/metrics.toml compare examples/data/b.toml examples/data/a.toml
-	cargo run --quiet -- --metrics examples/metrics.toml compare examples/data/a.toml examples/data/a.toml
+	cargo run --quiet -- --config examples/repometrics.toml generate examples/a > examples/data/a.toml
+	cargo run --quiet -- --config examples/repometrics.toml generate examples/b > examples/data/b.toml
+	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/a.toml examples/data/b.toml
+	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/b.toml examples/data/a.toml
+	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/a.toml examples/data/a.toml

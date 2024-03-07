@@ -1,14 +1,14 @@
 mod args;
 mod cache;
+mod config;
 mod data;
 mod gitlab;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
 use anyhow::{Context as _, Result};
-use clap::Parser;
 use log::{error, info};
 
 const STYLE_METRIC: Style = Style::new().bold();
@@ -19,23 +19,27 @@ const STYLE_CHANGE_WORSE: Style = Color::Ansi(AnsiColor::Red).on_default();
 fn main() -> Result<()> {
     env_logger::init();
 
-    let args = args::Args::parse();
+    let args = args::parse();
+    let config = config::load(args.config, args.command.root())?;
 
     match args.command {
         args::Command::Compare { baseline, test } => {
-            let metrics = load_metrics(args.metrics, None)?;
+            let metrics = config.metrics()?;
             let baseline_values = data::Values::load(baseline)?;
             let test_values = data::Values::load(test)?;
-            compare(&metrics, &baseline_values, &test_values);
+            compare(metrics, &baseline_values, &test_values);
         }
         args::Command::Generate { cache, root } => {
-            let metrics = load_metrics(args.metrics, Some(&root))?;
-            let (_, formatted) = generate(&metrics, &root, cache)?;
+            let metrics = config.metrics()?;
+            let root = root.as_deref().unwrap_or_else(|| ".".as_ref());
+            let (_, formatted) = generate(metrics, root, cache)?;
             print!("{}", formatted);
         }
         args::Command::Load { root, rev, gitlab } => {
-            let rev = cache::get_rev(&root, rev.rev.as_deref(), rev.base.as_deref())?;
-            let s = load(&gitlab, &root, &rev)?;
+            let root = root.as_deref().unwrap_or_else(|| ".".as_ref());
+            let gitlab = gitlab.into_config()?;
+            let rev = cache::get_rev(root, rev.rev.as_deref(), rev.base.as_deref())?;
+            let s = load(&config, gitlab, root, &rev)?;
             print!("{}", s)
         }
         args::Command::Run {
@@ -44,43 +48,20 @@ fn main() -> Result<()> {
             gitlab,
             cache,
         } => {
+            let metrics = config.metrics()?;
             let root = root.as_deref().unwrap_or_else(|| ".".as_ref());
-            let metrics = load_metrics(args.metrics, Some(root))?;
+            let gitlab = gitlab.into_config()?;
             let baseline_rev = cache::get_rev(root, rev.rev.as_deref(), rev.base.as_deref())?;
             info!("Resolved baseline to commit {baseline_rev}");
-            let baseline_values = load(&gitlab, root, &baseline_rev)?;
+            let baseline_values = load(&config, gitlab, root, &baseline_rev)?;
             let baseline_values = toml::from_str(&baseline_values)
                 .context("failed to parse cached baseline values")?;
-            let (values, _) = generate(&metrics, root, cache)?;
-            compare(&metrics, &baseline_values, &values);
+            let (values, _) = generate(metrics, root, cache)?;
+            compare(metrics, &baseline_values, &values);
         }
     }
 
     Ok(())
-}
-
-fn load_metrics(metrics: Option<PathBuf>, root: Option<&Path>) -> Result<data::Metrics> {
-    let path = metrics
-        .or_else(|| {
-            root.and_then(|root| {
-                let metrics = root.join("repometrics.toml");
-                if metrics.exists() {
-                    Some(metrics)
-                } else {
-                    None
-                }
-            })
-        })
-        .or_else(|| {
-            let metrics = Path::new(".").join("repometrics.toml");
-            if metrics.exists() {
-                Some(metrics)
-            } else {
-                None
-            }
-        })
-        .context("no metrics file found -- set the --metrics option")?;
-    data::Metrics::load(path)
 }
 
 fn compare(metrics: &data::Metrics, baseline: &data::Values, test: &data::Values) {
@@ -138,11 +119,16 @@ fn generate(metrics: &data::Metrics, root: &Path, cache: bool) -> Result<(data::
     Ok((values, formatted))
 }
 
-fn load(gitlab: &args::Gitlab, root: &Path, rev: &str) -> Result<String> {
+fn load(
+    config: &config::Config,
+    gitlab: Option<config::GitlabConfig>,
+    root: &Path,
+    rev: &str,
+) -> Result<String> {
     if let Some(values) = cache::load(root, rev)? {
         return Ok(values);
     }
-    if gitlab.any() {
+    if let Some(gitlab) = gitlab.as_ref().or(config.gitlab.as_ref()) {
         let s = gitlab
             .api()?
             .get_artifact(rev)

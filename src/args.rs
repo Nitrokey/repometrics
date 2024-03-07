@@ -1,14 +1,18 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Error, Result};
 use clap::{Parser, Subcommand};
 
-use crate::gitlab::Api;
+use crate::config::GitlabConfig;
+
+pub fn parse() -> Args {
+    Args::parse()
+}
 
 #[derive(Debug, Parser)]
 pub struct Args {
     #[arg(long, global = true)]
-    pub metrics: Option<PathBuf>,
+    pub config: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -22,10 +26,10 @@ pub enum Command {
     Generate {
         #[arg(long)]
         cache: bool,
-        root: PathBuf,
+        root: Option<PathBuf>,
     },
     Load {
-        root: PathBuf,
+        root: Option<PathBuf>,
         #[command(flatten)]
         rev: Rev,
         #[command(flatten)]
@@ -41,6 +45,17 @@ pub enum Command {
         #[arg(long)]
         cache: bool,
     },
+}
+
+impl Command {
+    pub fn root(&self) -> Option<&Path> {
+        match self {
+            Self::Compare { .. } => None,
+            Self::Generate { root, .. } => root.as_deref(),
+            Self::Load { root, .. } => root.as_deref(),
+            Self::Run { root, .. } => root.as_deref(),
+        }
+    }
 }
 
 #[derive(Debug, clap::Args)]
@@ -65,24 +80,35 @@ pub struct Gitlab {
 }
 
 impl Gitlab {
-    pub fn any(&self) -> bool {
+    fn any(&self) -> bool {
         self.host.is_some()
             || self.project.is_some()
             || self.job.is_some()
             || self.artifact.is_some()
     }
 
-    pub fn api(&self) -> Result<Api<'_>> {
-        let host = self.host.as_deref().context("--gitlab-host not set")?;
-        let project = self
-            .project
-            .as_deref()
-            .context("--gitlab-project not set")?;
-        let job = self.job.as_deref().context("--gitlab-job not set")?;
-        let artifact = self
-            .artifact
-            .as_deref()
-            .context("--gitlab-artifact not set")?;
-        Api::new(host, project, job, artifact)
+    pub fn into_config(self) -> Result<Option<GitlabConfig>> {
+        if self.any() {
+            self.try_into().map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl TryFrom<Gitlab> for GitlabConfig {
+    type Error = Error;
+
+    fn try_from(gitlab: Gitlab) -> Result<Self, Self::Error> {
+        let host = gitlab.host.context("--gitlab-host not set")?;
+        let project = gitlab.project.context("--gitlab-project not set")?;
+        let job = gitlab.job.context("--gitlab-job not set")?;
+        let artifact = gitlab.artifact.context("--gitlab-artifact not set")?;
+        Ok(GitlabConfig {
+            host,
+            project,
+            job,
+            artifact,
+        })
     }
 }
