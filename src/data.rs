@@ -8,19 +8,20 @@ pub struct Metrics(BTreeMap<String, Metric>);
 
 impl Metrics {
     pub fn generate(&self, root: &Path) -> Values {
-        let mut values = Values::default();
+        let mut values = ValuesV1::default();
         for (id, metric) in &self.0 {
-            let value = metric.generate(root);
-            values.0.insert(id.to_owned(), value);
+            if let Some(value) = metric.generate(root) {
+                values.values.insert(id.to_owned(), value);
+            }
         }
-        values
+        Values::V1(values)
     }
 
     pub fn compare(&self, baseline: &Values, test: &Values) -> Vec<Comparison> {
         let mut comparisons = Vec::new();
         for metric in self.0.keys() {
-            let old_value = baseline.0.get(metric).copied().flatten();
-            let new_value = test.0.get(metric).copied().flatten();
+            let old_value = baseline.get(metric);
+            let new_value = test.get(metric);
             comparisons.push(Comparison::new(metric.to_owned(), old_value, new_value));
         }
         comparisons
@@ -66,8 +67,12 @@ impl FileSize {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct Values(BTreeMap<String, Option<usize>>);
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "version")]
+pub enum Values {
+    #[serde(rename = "1")]
+    V1(ValuesV1),
+}
 
 impl Values {
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
@@ -78,9 +83,20 @@ impl Values {
             .with_context(|| format!("failed to parse values file '{}'", path.display()))
     }
 
+    pub fn get(&self, metric: &String) -> Option<usize> {
+        match self {
+            Self::V1(values) => values.values.get(metric).copied(),
+        }
+    }
+
     pub fn format(&self) -> Result<String> {
         toml::to_string_pretty(self).context("failed to format metric values")
     }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct ValuesV1 {
+    values: BTreeMap<String, usize>,
 }
 
 pub struct Comparison {
