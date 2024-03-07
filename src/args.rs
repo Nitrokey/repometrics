@@ -36,7 +36,6 @@ pub enum Command {
         gitlab: Gitlab,
     },
     Run {
-        #[arg(long)]
         root: Option<PathBuf>,
         #[command(flatten)]
         rev: Rev,
