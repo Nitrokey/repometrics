@@ -25,7 +25,7 @@ fn main() -> Result<()> {
             let metrics = config.metrics()?;
             let baseline_values = data::Values::load(baseline)?;
             let test_values = data::Values::load(test)?;
-            let comparisons = metrics.compare(&baseline_values, &test_values);
+            let comparisons = metrics.compare(&config.defaults, &baseline_values, &test_values);
             output::print_comparisons(compare_args.output_format, &comparisons);
         }
         args::Command::Generate { cache, root } => {
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
             let baseline_values = toml::from_str(&baseline_values)
                 .context("failed to parse cached baseline values")?;
             let (values, _) = generate(metrics, root, cache)?;
-            let comparisons = metrics.compare(&baseline_values, &values);
+            let comparisons = metrics.compare(&config.defaults, &baseline_values, &values);
             output::print_comparisons(compare_args.output_format, &comparisons);
         }
     }

@@ -38,6 +38,8 @@ pub fn load(path: Option<PathBuf>, root: Option<&Path>) -> Result<Config> {
 pub struct Config {
     #[serde(skip)]
     pub path: Option<PathBuf>,
+    #[serde(default)]
+    pub defaults: Defaults,
     pub gitlab: Option<GitlabConfig>,
     pub metrics: Option<Metrics>,
 }
@@ -67,6 +69,11 @@ impl Config {
             })
             .context("missing metrics definition")
     }
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Defaults {
+    pub significance_threshold: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

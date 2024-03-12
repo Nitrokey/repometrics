@@ -1,7 +1,6 @@
 - metrics metadata
   - units
   - target (is a higher value good or bad?)
-  - significance threshold (values with delta < than x are considered unchanged)
   - warning threshold (values with delta > than x trigger a special warning)
 - metrics
   - stack usage

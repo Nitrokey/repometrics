@@ -1,6 +1,23 @@
-use crate::data::Comparison;
+use crate::data::{Comparison, Comparisons};
 
-pub fn print_comparisons(comparisons: &[Comparison]) {
+pub fn print_comparisons(comparisons: &Comparisons) {
+    if comparisons.significant.is_empty() {
+        println!("No significant changes.");
+    } else {
+        print_comparison_table(&comparisons.significant);
+    }
+
+    if !comparisons.insignificant.is_empty() {
+        println!();
+        println!("<details>");
+        println!("<summary>Insignifcant changes</summary>");
+        println!();
+        print_comparison_table(&comparisons.insignificant);
+        println!("</details>");
+    }
+}
+
+fn print_comparison_table(comparisons: &[Comparison]) {
     println!("| metric | value |     | change |");
     println!("| ------ | ----: | :-: | :----: |");
     for comparison in comparisons {

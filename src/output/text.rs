@@ -1,14 +1,29 @@
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
 
-use crate::data::Comparison;
+use crate::data::{Comparison, Comparisons};
 
 const STYLE_METRIC: Style = Style::new().bold();
 const STYLE_CHANGE_NONE: Style = Style::new().dimmed();
 const STYLE_CHANGE_BETTER: Style = Color::Ansi(AnsiColor::Green).on_default();
 const STYLE_CHANGE_WORSE: Style = Color::Ansi(AnsiColor::Red).on_default();
 
-pub fn print_comparisons(comparisons: &[Comparison]) {
+pub fn print_comparisons(comparisons: &Comparisons) {
+    if comparisons.significant.is_empty() {
+        println!("No significant changes.");
+    } else {
+        println!("Significant changes:");
+        print_comparison_table(&comparisons.significant);
+    }
+
+    if !comparisons.insignificant.is_empty() {
+        println!();
+        println!("Insignificant changes:");
+        print_comparison_table(&comparisons.insignificant);
+    }
+}
+
+fn print_comparison_table(comparisons: &[Comparison]) {
     for comparison in comparisons {
         let mut style_change = Style::new();
         if let Some(absolute_change) = comparison.absolute_change {

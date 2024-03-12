@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, fs, path::Path};
 use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::config::Defaults;
+
 #[derive(Debug, Deserialize)]
 pub struct Metrics(BTreeMap<String, Metric>);
 
@@ -17,12 +19,24 @@ impl Metrics {
         Values::V1(values)
     }
 
-    pub fn compare(&self, baseline: &Values, test: &Values) -> Vec<Comparison> {
-        let mut comparisons = Vec::new();
-        for metric in self.0.keys() {
-            let old_value = baseline.get(metric);
-            let new_value = test.get(metric);
-            comparisons.push(Comparison::new(metric.to_owned(), old_value, new_value));
+    pub fn compare(&self, defaults: &Defaults, baseline: &Values, test: &Values) -> Comparisons {
+        let mut comparisons = Comparisons::default();
+        for (id, metric) in &self.0 {
+            let significance_threshold = metric
+                .significance_threshold
+                .or(defaults.significance_threshold);
+            let old_value = baseline.get(id);
+            let new_value = test.get(id);
+            let comparison = Comparison::new(id.to_owned(), old_value, new_value);
+            let is_significant = significance_threshold
+                .zip(comparison.relative_change)
+                .map(|(threshold, change)| change.abs() >= threshold)
+                .unwrap_or(true);
+            if is_significant {
+                comparisons.significant.push(comparison);
+            } else {
+                comparisons.insignificant.push(comparison);
+            }
         }
         comparisons
     }
@@ -32,6 +46,7 @@ impl Metrics {
 pub struct Metric {
     #[serde(flatten)]
     def: MetricDef,
+    significance_threshold: Option<f32>,
 }
 
 impl Metric {
@@ -99,6 +114,13 @@ pub struct ValuesV1 {
     values: BTreeMap<String, usize>,
 }
 
+#[derive(Debug, Default)]
+pub struct Comparisons {
+    pub significant: Vec<Comparison>,
+    pub insignificant: Vec<Comparison>,
+}
+
+#[derive(Debug)]
 pub struct Comparison {
     pub metric: String,
     pub old_value: Option<usize>,
