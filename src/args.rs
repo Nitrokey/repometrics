@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Error, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::GitlabConfig;
 
@@ -22,6 +22,8 @@ pub enum Command {
     Compare {
         baseline: PathBuf,
         test: PathBuf,
+        #[command(flatten)]
+        compare_args: CompareArgs,
     },
     Generate {
         #[arg(long)]
@@ -41,6 +43,8 @@ pub enum Command {
         rev: Rev,
         #[command(flatten)]
         gitlab: Gitlab,
+        #[command(flatten)]
+        compare_args: CompareArgs,
         #[arg(long)]
         cache: bool,
     },
@@ -55,6 +59,19 @@ impl Command {
             Self::Run { root, .. } => root.as_deref(),
         }
     }
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CompareArgs {
+    #[arg(long, default_value_t, value_enum)]
+    pub output_format: OutputFormat,
+}
+
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+pub enum OutputFormat {
+    #[default]
+    Text,
+    Markdown,
 }
 
 #[derive(Debug, clap::Args)]

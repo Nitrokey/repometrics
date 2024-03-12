@@ -18,3 +18,4 @@ example:
 	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/a.toml examples/data/b.toml
 	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/b.toml examples/data/a.toml
 	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/a.toml examples/data/a.toml
+	cargo run --quiet -- --config examples/repometrics.toml compare examples/data/a.toml examples/data/b.toml --output-format markdown

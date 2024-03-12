@@ -12,7 +12,6 @@
   - pick latest Gitlab job if there are multiple
 - output
   - format as table
-  - different output formats: markdown, ...
   - order by relative change
 - general
   - multiple config files?  separate config file for Gitlab token?

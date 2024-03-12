@@ -3,18 +3,12 @@ mod cache;
 mod config;
 mod data;
 mod gitlab;
+mod output;
 
 use std::path::Path;
 
-use anstream::{print, println};
-use anstyle::{AnsiColor, Color, Style};
 use anyhow::{Context as _, Result};
 use log::{error, info};
-
-const STYLE_METRIC: Style = Style::new().bold();
-const STYLE_CHANGE_NONE: Style = Style::new().dimmed();
-const STYLE_CHANGE_BETTER: Style = Color::Ansi(AnsiColor::Green).on_default();
-const STYLE_CHANGE_WORSE: Style = Color::Ansi(AnsiColor::Red).on_default();
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -23,11 +17,16 @@ fn main() -> Result<()> {
     let config = config::load(args.config, args.command.root())?;
 
     match args.command {
-        args::Command::Compare { baseline, test } => {
+        args::Command::Compare {
+            baseline,
+            test,
+            compare_args,
+        } => {
             let metrics = config.metrics()?;
             let baseline_values = data::Values::load(baseline)?;
             let test_values = data::Values::load(test)?;
-            compare(metrics, &baseline_values, &test_values);
+            let comparisons = metrics.compare(&baseline_values, &test_values);
+            output::print_comparisons(compare_args.output_format, &comparisons);
         }
         args::Command::Generate { cache, root } => {
             let metrics = config.metrics()?;
@@ -46,6 +45,7 @@ fn main() -> Result<()> {
             root,
             rev,
             gitlab,
+            compare_args,
             cache,
         } => {
             let metrics = config.metrics()?;
@@ -57,55 +57,12 @@ fn main() -> Result<()> {
             let baseline_values = toml::from_str(&baseline_values)
                 .context("failed to parse cached baseline values")?;
             let (values, _) = generate(metrics, root, cache)?;
-            compare(metrics, &baseline_values, &values);
+            let comparisons = metrics.compare(&baseline_values, &values);
+            output::print_comparisons(compare_args.output_format, &comparisons);
         }
     }
 
     Ok(())
-}
-
-fn compare(metrics: &data::Metrics, baseline: &data::Values, test: &data::Values) {
-    let comparisons = metrics.compare(baseline, test);
-    for comparison in comparisons {
-        let mut style_change = Style::new();
-        if let Some(absolute_change) = comparison.absolute_change {
-            if absolute_change.is_positive() {
-                style_change = STYLE_CHANGE_WORSE;
-            } else if absolute_change.is_negative() {
-                style_change = STYLE_CHANGE_BETTER;
-            } else {
-                style_change = STYLE_CHANGE_NONE;
-            }
-        }
-        print!("{STYLE_METRIC}{}{STYLE_METRIC:#}\t", comparison.metric);
-        if let Some(old_value) = comparison.old_value {
-            print!("{old_value}");
-        } else {
-            print!("-");
-        }
-        print!("\t");
-        if let Some(new_value) = comparison.new_value {
-            print!("{new_value}");
-        } else {
-            print!("-");
-        }
-        print!("\t");
-        if let Some(absolute_change) = comparison.absolute_change {
-            print!("{style_change}{absolute_change:+}{style_change:#}");
-        } else {
-            print!("-");
-        }
-        print!("\t");
-        if let Some(relative_change) = comparison.relative_change {
-            print!(
-                "{style_change}{:+.2}%{style_change:#}",
-                relative_change * 100.0
-            );
-        } else {
-            print!("-");
-        }
-        println!();
-    }
 }
 
 fn generate(metrics: &data::Metrics, root: &Path, cache: bool) -> Result<(data::Values, String)> {
