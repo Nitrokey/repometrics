@@ -1,6 +1,9 @@
 .PHONY: all
 all: check lint
 
+.PHONY: ci
+ci: check lint test
+
 .PHONY: check
 check:
 	cargo check
@@ -9,6 +12,10 @@ check:
 lint:
 	cargo clippy
 	cargo fmt -- --check
+
+.PHONY: test
+test:
+	cargo test
 
 .PHONY: example
 example:
