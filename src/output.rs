@@ -19,7 +19,7 @@ fn prettify_integer(i: impl ToString) -> String {
         .rev()
         .flat_map(|(idx, c)| {
             if idx % 3 == 0 && c != '-' && idx != 0 {
-                [c].into_iter().chain(Some('_'))
+                [c].into_iter().chain(Some(','))
             } else {
                 [c].into_iter().chain(None)
             }
@@ -35,11 +35,11 @@ mod tests {
     fn prettyfy() {
         assert_eq!(prettify_integer(0), "0");
         assert_eq!(prettify_integer(123), "123");
-        assert_eq!(prettify_integer(1230), "1_230");
-        assert_eq!(prettify_integer(1230000), "1_230_000");
+        assert_eq!(prettify_integer(1230), "1,230");
+        assert_eq!(prettify_integer(1230000), "1,230,000");
         assert_eq!(prettify_integer(-1), "-1");
         assert_eq!(prettify_integer(-123), "-123");
-        assert_eq!(prettify_integer(-1230), "-1_230");
-        assert_eq!(prettify_integer(-1230000), "-1_230_000");
+        assert_eq!(prettify_integer(-1230), "-1,230");
+        assert_eq!(prettify_integer(-1230000), "-1,230,000");
     }
 }
