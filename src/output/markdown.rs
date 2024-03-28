@@ -41,7 +41,8 @@ fn print_comparison_table(comparisons: &[Comparison]) {
         print!(" | {trend} | ");
         let change = comparison.absolute_change.zip(comparison.relative_change);
         if let Some((absolute_change, relative_change)) = change {
-            print!("{absolute_change:+} ({relative_change:+.2}%)");
+            let percent_change = relative_change * 100.;
+            print!("{absolute_change:+} ({percent_change:+.2}%)");
         }
         println!(" |");
     }
