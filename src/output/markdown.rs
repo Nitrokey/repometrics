@@ -1,4 +1,3 @@
-use super::prettify_integer;
 use crate::data::{Comparison, Comparisons};
 
 pub fn print_comparisons(comparisons: &Comparisons) {
@@ -35,17 +34,14 @@ fn print_comparison_table(comparisons: &[Comparison]) {
         };
         print!("| {} | ", comparison.metric);
         if let Some(new_value) = comparison.new_value {
-            let pretty_new_value = prettify_integer(new_value);
-            print!("{pretty_new_value}");
+            print!("{new_value}");
         } else {
             print!("-");
         }
         print!(" | {trend} | ");
         let change = comparison.absolute_change.zip(comparison.relative_change);
         if let Some((absolute_change, relative_change)) = change {
-            let percent_change = relative_change * 100.;
-            let pretty_absolute_change = prettify_integer(absolute_change);
-            print!("{pretty_absolute_change:+} ({percent_change:+.2}%)");
+            print!("{absolute_change} ({relative_change})");
         }
         println!(" |");
     }

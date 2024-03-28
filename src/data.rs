@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Display, Formatter, Write as _},
+    fs,
+    ops::Deref,
+    path::Path,
+};
 
 use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
@@ -123,10 +129,10 @@ pub struct Comparisons {
 #[derive(Debug)]
 pub struct Comparison {
     pub metric: String,
-    pub old_value: Option<usize>,
-    pub new_value: Option<usize>,
-    pub absolute_change: Option<isize>,
-    pub relative_change: Option<f32>,
+    pub old_value: Option<AbsoluteValue>,
+    pub new_value: Option<AbsoluteValue>,
+    pub absolute_change: Option<AbsoluteChange>,
+    pub relative_change: Option<RelativeChange>,
 }
 
 impl Comparison {
@@ -145,10 +151,111 @@ impl Comparison {
         }
         Self {
             metric,
-            old_value,
-            new_value,
-            absolute_change,
-            relative_change,
+            old_value: old_value.map(AbsoluteValue),
+            new_value: new_value.map(AbsoluteValue),
+            absolute_change: absolute_change.map(AbsoluteChange),
+            relative_change: relative_change.map(RelativeChange),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AbsoluteValue(usize);
+
+impl Deref for AbsoluteValue {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for AbsoluteValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        display_int(f, &self.0.to_string())
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AbsoluteChange(isize);
+
+impl Deref for AbsoluteChange {
+    type Target = isize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for AbsoluteChange {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        display_int(f, &format!("{:+}", self.0))
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct RelativeChange(f32);
+
+impl Deref for RelativeChange {
+    type Target = f32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for RelativeChange {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:+.2}%", self.0 * 100.0)
+    }
+}
+
+fn display_int(f: &mut Formatter<'_>, s: &str) -> fmt::Result {
+    let tmp: Vec<char> = s.chars().collect();
+    tmp.into_iter()
+        .rev()
+        .enumerate()
+        .rev()
+        .flat_map(|(idx, c)| {
+            if idx % 3 == 0 && c != '+' && c != '-' && idx != 0 {
+                [c].into_iter().chain(Some(','))
+            } else {
+                [c].into_iter().chain(None)
+            }
+        })
+        .try_for_each(|c| f.write_char(c))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_absolute_value() {
+        assert_eq!(AbsoluteValue(0).to_string(), "0");
+        assert_eq!(AbsoluteValue(123).to_string(), "123");
+        assert_eq!(AbsoluteValue(1230).to_string(), "1,230");
+        assert_eq!(AbsoluteValue(1230000).to_string(), "1,230,000");
+    }
+
+    #[test]
+    fn display_absolute_change() {
+        assert_eq!(AbsoluteChange(0).to_string(), "+0");
+        assert_eq!(AbsoluteChange(123).to_string(), "+123");
+        assert_eq!(AbsoluteChange(1230).to_string(), "+1,230");
+        assert_eq!(AbsoluteChange(1230000).to_string(), "+1,230,000");
+        assert_eq!(AbsoluteChange(-1).to_string(), "-1");
+        assert_eq!(AbsoluteChange(-123).to_string(), "-123");
+        assert_eq!(AbsoluteChange(-1230).to_string(), "-1,230");
+        assert_eq!(AbsoluteChange(-1230000).to_string(), "-1,230,000");
+    }
+
+    #[test]
+    fn display_relative_change() {
+        assert_eq!(RelativeChange(0.0).to_string(), "+0.00%");
+        assert_eq!(RelativeChange(0.1).to_string(), "+10.00%");
+        assert_eq!(RelativeChange(0.9999).to_string(), "+99.99%");
+        assert_eq!(RelativeChange(-0.1).to_string(), "-10.00%");
+        assert_eq!(RelativeChange(-0.9999).to_string(), "-99.99%");
     }
 }

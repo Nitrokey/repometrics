@@ -1,7 +1,6 @@
 use anstream::{print, println};
 use anstyle::{AnsiColor, Color, Style};
 
-use super::prettify_integer;
 use crate::data::{Comparison, Comparisons};
 
 const STYLE_METRIC: Style = Style::new().bold();
@@ -38,31 +37,25 @@ fn print_comparison_table(comparisons: &[Comparison]) {
         }
         print!("{STYLE_METRIC}{}{STYLE_METRIC:#}\t", comparison.metric);
         if let Some(old_value) = comparison.old_value {
-            print!("{}", prettify_integer(old_value));
+            print!("{}", old_value);
         } else {
             print!("-");
         }
         print!("\t");
         if let Some(new_value) = comparison.new_value {
-            print!("{}", prettify_integer(new_value));
+            print!("{}", new_value);
         } else {
             print!("-");
         }
         print!("\t");
         if let Some(absolute_change) = comparison.absolute_change {
-            print!(
-                "{style_change}{:+}{style_change:#}",
-                prettify_integer(absolute_change)
-            );
+            print!("{style_change}{absolute_change}{style_change:#}");
         } else {
             print!("-");
         }
         print!("\t");
         if let Some(relative_change) = comparison.relative_change {
-            print!(
-                "{style_change}{:+.2}%{style_change:#}",
-                relative_change * 100.0
-            );
+            print!("{style_change}{relative_change}{style_change:#}");
         } else {
             print!("-");
         }
