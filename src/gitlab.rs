@@ -12,10 +12,29 @@ use gitlab::{
         },
         Endpoint, Pagination, Query as _,
     },
-    types::{Job, JobId, PipelineBasic, PipelineId},
     Gitlab,
 };
 use log::{debug, info, warn};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(transparent)]
+struct JobId(u64);
+
+#[derive(Deserialize)]
+#[serde(transparent)]
+struct PipelineId(u64);
+
+#[derive(Deserialize)]
+struct Job {
+    id: JobId,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct Pipeline {
+    id: PipelineId,
+}
 
 pub struct Api<'a> {
     gitlab: Gitlab,
@@ -73,15 +92,15 @@ impl<'a> Api<'a> {
         api::paged(query, Pagination::All)
             .iter(&self.gitlab)
             .map(|result| result.context("failed to parse pipeline returned by Gitlab"))
-            .map(|result| result.map(|pipeline: PipelineBasic| pipeline.id))
+            .map(|result| result.map(|pipeline: Pipeline| pipeline.id))
             .collect()
     }
 
     fn get_jobs_for_pipeline(&self, pipeline: PipelineId) -> Result<Vec<JobId>> {
-        debug!("Fetching jobs for pipeline {pipeline}");
+        debug!("Fetching jobs for pipeline {}", pipeline.0);
         let query = PipelineJobs::builder()
             .project(self.project)
-            .pipeline(pipeline.value())
+            .pipeline(pipeline.0)
             .scope(JobScope::Success)
             .build()
             .context("failed to fetch jobs from Gitlab")?;
@@ -99,7 +118,7 @@ impl<'a> Api<'a> {
     }
 
     fn get_artifact_for_job(&self, job: JobId) -> Result<String> {
-        debug!("Fetching artifact {} for job {job}", self.artifact);
+        debug!("Fetching artifact {} for job {}", self.artifact, job.0);
         let query = JobArtifact {
             project: NameOrId::from(self.project),
             job,
@@ -126,7 +145,7 @@ impl Endpoint for JobArtifact<'_> {
     fn endpoint(&self) -> Cow<'static, str> {
         format!(
             "projects/{}/jobs/{}/artifacts/{}",
-            self.project, self.job, self.artifact
+            self.project, self.job.0, self.artifact
         )
         .into()
     }
